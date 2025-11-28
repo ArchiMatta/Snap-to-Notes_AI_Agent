@@ -1,11 +1,10 @@
-from agent.smartnote_agent import SmartNoteAgent
+from agent.agent_main import SmartNoteAgent
 
 if __name__ == "__main__":
     agent = SmartNoteAgent()
 
-    user_input = input("Enter text to summarize:\n\n")
+    text = input("Enter text:\n\n")
+    response = agent.run(text)
 
-    summary = agent.summarize_text(user_input)
-
-    print("\n=== SUMMARY ===\n")
-    print(summary)
+    print("\n=== FINAL OUTPUT ===\n")
+    print(response)
