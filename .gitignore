@@ -27,3 +27,11 @@ dist/
 
 # Cache
 .cache/
+
+# Logs
+logs/
+*.log
+*.json
+
+# Output files
+data/outputs/*
