@@ -1,47 +1,43 @@
-import os
-from .approval_handler import ApprovalHandler
+# mcp_server/runtime/operations/workflow_manager.py
+
+from mcp_server.runtime.operations.approval_handler import ApprovalHandler
 
 class WorkflowManager:
-    """Handles long workflow approvals + OCR + large text summarization."""
+    """
+    Manages long-running operations like long summaries.
+    Handles approval → execution sequence.
+    """
 
-    def __init__(self, ocr_tool, summarizer_agent):
-        self.approvals = ApprovalHandler()
+    def __init__(self, ocr_tool, agent):
         self.ocr_tool = ocr_tool
-        self.agent = summarizer_agent
-        self._pending_input = None
+        self.agent = agent
 
-    def start_long_summary_workflow(self, input_value: str) -> dict:
-        self._pending_input = input_value
+        # FIX HERE (ApprovalManager → ApprovalHandler)
+        self.approvals = ApprovalHandler()
 
+    def start_long_summary_workflow(self, file_or_text):
+        """
+        Step 1 — Ask for approval
+        """
         return self.approvals.request_approval(
-            operation_name="long_summary",
-            details=f"Processing: {input_value}"
+            "long_summary",
+            {"target": file_or_text}
         )
 
-    def execute_long_summary(self, user_input=None) -> dict:
+    def execute_long_summary(self, file_or_text):
         """
-        After approval → run OCR if file, or use raw text.
-        Bypasses length limit (force=True).
+        Step 2 — Perform long summary after user approves
         """
 
-        target = user_input if user_input else self._pending_input
-        if not target:
-            return {"status": "no_pending_operation"}
-
-        # CASE 1 — pasted text
-        if not os.path.exists(target):
-            extracted = target
-
-        # CASE 2 — file → OCR
+        # If this is a file → OCR first
+        if isinstance(file_or_text, str) and file_or_text.endswith((".png", ".jpg", ".jpeg")):
+            try:
+                extracted_text = self.ocr_tool.run(file_or_text)
+            except Exception as e:
+                return {"status": "error", "message": str(e)}
         else:
-            extracted = self.ocr_tool.run(target)
+            extracted_text = file_or_text
 
-        # ⛔ IMPORTANT → must force=True
-        final = self.agent.summarize_text(extracted, force=True)
-
-        self._pending_input = None
-
-        return {
-            "status": "completed",
-            "summary": final.get("summary", "")
-        }
+        # Force = True → bypass length check
+        final = self.agent.summarize_text(extracted_text, force=True)
+        return final

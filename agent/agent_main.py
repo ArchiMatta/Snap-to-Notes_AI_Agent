@@ -15,6 +15,8 @@ def main():
 
     workflow_manager = WorkflowManager(ocr_tool, agent)
 
+    last_extracted_text = None  # store OCR text for long workflow
+
     while True:
         user_input = input("You: ").strip()
         if not user_input:
@@ -26,25 +28,43 @@ def main():
 
         is_file = os.path.exists(user_input)
 
-        # For files: OCR first
+        # -----------------------------------------------------------
+        # CASE 1 — FILE INPUT → OCR
+        # -----------------------------------------------------------
         if is_file:
-            extracted = ocr_tool.run(user_input)
-            response = agent.summarize_text(extracted)
+            extracted_text = ocr_tool.run(user_input)
+            last_extracted_text = extracted_text  # save for workflow + memory
+            agent.memory_manager.add_to_memory(extracted_text)
+
+            print("\n[Extracted Text via OCR]\n", extracted_text[:450], "...\n")
+
+            response = agent.summarize_text(extracted_text)
+
+        # -----------------------------------------------------------
+        # CASE 2 — NORMAL TEXT INPUT
+        # -----------------------------------------------------------
         else:
+            agent.memory_manager.add_to_memory(user_input)
             response = agent.summarize_text(user_input)
 
-        # Long workflow trigger
+        # -----------------------------------------------------------
+        # LONG WORKFLOW TRIGGER
+        # -----------------------------------------------------------
         if response.get("status") == "requires_approval":
             print("SmartNote:", response["details"])
 
-            req = workflow_manager.start_long_summary_workflow(user_input)
+            req = workflow_manager.start_long_summary_workflow("long_summary")
             print("SmartNote:", req["message"])
 
             approval = input("Type 'approve' to continue, 'reject' to cancel: ").strip().lower()
 
             if approval == "approve":
                 workflow_manager.approvals.approve()
-                final = workflow_manager.execute_long_summary(user_input)
+
+                # FIX: pass EXTRACTED TEXT (not file path)
+                long_text = last_extracted_text if is_file else user_input
+
+                final = workflow_manager.execute_long_summary(long_text)
 
                 print("\nSmartNote: Long workflow finished.\n")
                 print(final.get("summary", "[No summary found]"))
@@ -52,10 +72,14 @@ def main():
             else:
                 workflow_manager.approvals.reject()
                 print("SmartNote: Operation cancelled.")
+
             continue
 
-        # Short summary
+        # -----------------------------------------------------------
+        # SHORT SUMMARY
+        # -----------------------------------------------------------
         print("\nSmartNote:", response.get("summary", "[No summary found]"))
+
 
 if __name__ == "__main__":
     main()
