@@ -4,6 +4,6 @@ Tools for MCP Server:
 - Summarization
 - DOCX creation
 """
-from .extract_key_points import ExtractKeyPointsTool
-from .summarize_block import SummarizeBlockTool
-from .google_search import GoogleSearchTool
+from .extract_key_points import extract_key_points
+from .summarize_block import summarize_block
+from .google_search import google_search
