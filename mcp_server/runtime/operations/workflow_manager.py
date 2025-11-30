@@ -1,36 +1,47 @@
+import os
 from .approval_handler import ApprovalHandler
 
 class WorkflowManager:
-    """
-    Orchestrates long-running tool operations with approval flow.
-    """
+    """Handles long workflow approvals + OCR + large text summarization."""
 
-    def __init__(self, extract_tool, summarize_tool):
+    def __init__(self, ocr_tool, summarizer_agent):
         self.approvals = ApprovalHandler()
-        self.extract_tool = extract_tool
-        self.summarize_tool = summarize_tool
+        self.ocr_tool = ocr_tool
+        self.agent = summarizer_agent
+        self._pending_input = None
 
-    def start_long_summary_workflow(self, file_path):
-        """
-        Start: ask user for approval because summarizing a large file takes time.
-        """
+    def start_long_summary_workflow(self, input_value: str) -> dict:
+        self._pending_input = input_value
 
-        approval_request = self.approvals.request_approval(
+        return self.approvals.request_approval(
             operation_name="long_summary",
-            details=f"Summarize large file: {file_path}"
+            details=f"Processing: {input_value}"
         )
 
-        return approval_request
-
-    def execute_long_summary(self, file_path):
+    def execute_long_summary(self, user_input=None) -> dict:
         """
-        After approval → run extraction → summarization.
+        After approval → run OCR if file, or use raw text.
+        Bypasses length limit (force=True).
         """
 
-        extracted_text = self.extract_tool.run(file_path)
-        summary = self.summarize_tool.run(extracted_text)
+        target = user_input if user_input else self._pending_input
+        if not target:
+            return {"status": "no_pending_operation"}
+
+        # CASE 1 — pasted text
+        if not os.path.exists(target):
+            extracted = target
+
+        # CASE 2 — file → OCR
+        else:
+            extracted = self.ocr_tool.run(target)
+
+        # ⛔ IMPORTANT → must force=True
+        final = self.agent.summarize_text(extracted, force=True)
+
+        self._pending_input = None
 
         return {
             "status": "completed",
-            "summary": summary
+            "summary": final.get("summary", "")
         }

@@ -1,37 +1,25 @@
-# Python
+# Virtual env
+venv/
+env/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.log
 
-# Virtual environment
-venv/
-.env/
-*.env
-
-# VS Code
-.vscode/
-
-# OS-specific
+# OS files
 .DS_Store
 Thumbs.db
 
-# Python build
-build/
-dist/
-*.egg-info/
+# VSCode
+.vscode/
 
-# PyCharm
-.idea/
+# Environment files
+.env
 
-# Cache
-.cache/
-
-# Logs
+# Logs and outputs
 logs/
+data/outputs/
 *.log
-*.json
 
-# Output files
-data/outputs/*
+# Tesseract temp
+.tesseract_cache/
